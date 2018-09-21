@@ -3,7 +3,9 @@ const faker = require('faker');
 const jsonServer = require('json-server')
 
 const port = process.env.PORT || 8080;
-const schema = process.env.SCHEMA || 'default';
+const schema = process.env.SCHEMA || path.join(__dirname, 'public/schema/default.json');
+const locale = process.env.LOCALE || 'en';
+
 const server = jsonServer.create()
 const middlewares = jsonServer.defaults({
   static: 'public',
@@ -13,44 +15,58 @@ const middlewares = jsonServer.defaults({
   readOnly: false
 })
 
-const router = jsonServer.router(path.join(__dirname, `${schema}.json`))
+const router = jsonServer.router(schema)
 
 server.use(middlewares)
-
-// Add custom routes before JSON Server router
 
 server.get('/ping', (req, res) => {
   res.jsonp({
     timestamp: new Date().getTime(),
+    locale,
     schema
   })
 })
 
-server.get('/generate/:type', (req, res) => {
+server.get('/puke/:quantity/:type/', (req, res) => {
   const type = req.params.type
-  let data = {}
-
-  switch(type) {
-    case 'user':
-        const card = faker.helpers.createCard()
-        data.name = card.name
-        data.username = card.username
-        data.password = faker.internet.password()
-        data.email = card.email
-        data.phone = card.phone
-        data.website = card.website
-        data.address = card.address
-        break;
-    default: break;
+  let quantity = parseInt(req.params.quantity)
+  if (quantity < 0 || quantity > 100) {
+    quantity = 0
   }
 
+  let data = []
+    for (let c=0; c<quantity; c++) {
+      switch(type) {
+        case 'user':
+          data.push({
+            firstName: faker.name.firstName(),
+            lastName: faker.name.lastName(),
+            email: faker.internet.email(),
+            password: faker.internet.password(),
+            title: faker.name.jobTitle(),
+            phone: faker.phone.phoneNumber(),
+            ip: faker.internet.ip(),
+            avatar: faker.internet.avatar(),
+            color: faker.commerce.color()
+          });
+          break;
+        default:
+          try {
+            const parts = type.split('.')
+            data.push(faker[parts[0]][parts[1]]())
+          } catch (e) {}
+          break;
+      }
+    }
+
   res.jsonp({
+    docs: 'https://github.com/marak/Faker.js/#api-methods',
     type,
+    quantity,
     data
   })
 })
 
-// Route rewriter
 server.use(jsonServer.rewriter({
   '/api/*': '/$1'
 }))
@@ -59,6 +75,8 @@ server.use(jsonServer.bodyParser)
 
 server.use(router)
 
+faker.locale = locale
+
 server.listen(port, () => {
-  console.log(`JSON Server is running on port ${port}`)
+  console.log(`[Mock API] Port ${port} using ${schema}`)
 })
