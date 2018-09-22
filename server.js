@@ -1,6 +1,7 @@
 const path = require('path')
 const faker = require('faker');
 const jsonServer = require('json-server')
+request = require('request')
 
 const port = process.env.PORT || 8080;
 const schema = process.env.SCHEMA || path.join(__dirname, 'public/schema/default.json');
@@ -65,6 +66,10 @@ server.get('/puke/:quantity/:type/', (req, res) => {
     quantity,
     data
   })
+})
+
+server.get('/placeholder/:size', (req, res) => {
+  request('https://placeholdit.co/i/' + req.params.size + '?&bg=555555&text=' + req.params.size).pipe(res)
 })
 
 server.use(jsonServer.rewriter({
